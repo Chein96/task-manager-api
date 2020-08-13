@@ -1,4 +1,6 @@
 const express = require('express');
+const multer = require('multer');
+const sharp = require('sharp');
 const Task = require('../models/task');
 const auth = require('../middleware/auth');
 
@@ -102,6 +104,62 @@ router.delete('/tasks/:id', auth, async (req, res) => {
         res.send(task);
     }catch(e){
         res.status(500).send(e);
+    }
+});
+
+// Upload Task Image
+const upload = multer({
+    limits: {
+        fileSize: 1000000
+    },
+    fileFilter(req, file, cb){
+        if(!file.originalname.match(/\.(jpg|jpeg|png)$/)){
+            cb(new Error('Please upload a valid image format.'));
+        }
+
+        cb(undefined, true);
+    }
+});
+
+router.post('/tasks/:id/image', auth, upload.single('image'), async (req, res) => {
+    const task = await Task.findOne({ _id: req.params.id, owner: req.user._id });
+
+    if(!task) {
+        return res.status(404).send();
+    }
+
+    const buffer = await sharp(req.file.buffer).png().toBuffer();
+    task.image = buffer;
+    await task.save();
+    res.send();
+}, (error, req, res, next) => {
+    res.status(400).send({ error: error.message });
+});
+
+// Delete Task Image
+router.delete('/tasks/:id/image', auth, async (req, res) => {
+    const task = await Task.findOne({ _id: req.params.id, owner: req.user._id });
+    if(!task) {
+        return res.status(404).send();
+    }
+    task.image = undefined;
+    await task.save();
+    res.send();
+});
+
+// Get Task Image
+router.get('/tasks/:id/image', auth, async (req, res) => {
+    try {
+        const task = await Task.findOne({ _id: req.params.id, owner: req.user._id });
+
+        if(!task || !task.image){
+            throw new Error();
+        }
+        
+        res.set('Content-Type', 'image/png');
+        res.send(task.image);
+    } catch(e) {
+        res.status(404).send();
     }
 });
 

@@ -10,6 +10,9 @@ const taskSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
+    image: {
+        type: Buffer
+    },
     owner: {
         type: mongoose.Schema.Types.ObjectId,
         required: true,
@@ -18,6 +21,15 @@ const taskSchema = new mongoose.Schema({
 }, {
     timestamps: true
 });
+
+taskSchema.methods.toJSON = function () {
+    const task = this;
+    const taskObject = task.toObject();
+
+    delete taskObject.image;
+
+    return taskObject;
+}
 
 const Task = mongoose.model('Task', taskSchema);
 
